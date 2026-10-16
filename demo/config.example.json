@@ -1,0 +1,9 @@
+{
+  "vlm": {
+    "base_url": "https://open.bigmodel.cn/api/paas/v4",
+    "api_key": "在 https://bigmodel.cn 注册后填入",
+    "model": "glm-4.1v-thinking-flash",
+    "timeout_seconds": 180,
+    "max_tokens": 8192
+  }
+}
