@@ -9,7 +9,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from common.player import enumerate_windows, execute_script, find_window
+from common.player import enumerate_windows, execute_script, find_window, focus_window
 from common.script import validate
 from common.windowinfo import set_dpi_aware  # 补充1:启动即 DPI 感知
 
@@ -104,6 +104,12 @@ def main():
         alert("找不到目标窗口: %s\n请先打开目标程序。" % script["target"]["title_re"])
         sys.exit(2)
 
+    # 键盘动作发往前台,必须先把目标窗口带到前台(否则会打进控制台)。
+    if not focus_window(script["target"]["title_re"]):
+        alert("无法聚焦目标窗口: %s\n请检查窗口是否最小化或已关闭。"
+              % script["target"]["title_re"])
+        sys.exit(2)
+
     log, failed = execute_script(script, win, RealExecutor())
     log_path = a.script_path + ".run_log.json"
     with open(log_path, "w", encoding="utf-8") as f:
@@ -114,7 +120,12 @@ def main():
         alert("第 %d 步(%s %s)失败,已停止。日志: %s"
               % (failed, script["steps"][failed].get("action", ""), desc, log_path))
         sys.exit(1)
-    print("回放完成,共 %d 步。日志: %s" % (len(log), log_path))
+    msg = "回放完成,共 %d 步。日志: %s" % (len(log), log_path)
+    try:
+        print(msg)
+    except UnicodeEncodeError:
+        # cp936 控制台遇非 GBK 字符(如日志路径)会崩,降级打印
+        print(msg.encode("gbk", "replace").decode("gbk"))
 
 
 if __name__ == "__main__":
