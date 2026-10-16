@@ -1,7 +1,18 @@
 # -*- coding: utf-8 -*-
 """回放脚本契约与校验。脚本是人可读可手改的 JSON(共识:小改手改脚本)。"""
+import math
+import re
+
 ALLOWED_ACTIONS = ("click", "input", "hotkey", "wait")
 ALLOWED_STRATEGIES = ("offset",)  # demo 仅 offset;后续加 uia / image
+
+
+def _is_number(v, accept_float=False):
+    if isinstance(v, bool):
+        return False
+    if accept_float:
+        return isinstance(v, (int, float))
+    return isinstance(v, int)
 
 
 def validate(script):
@@ -11,8 +22,14 @@ def validate(script):
     if not isinstance(script.get("name"), str) or not script.get("name"):
         errors.append("缺少非空 name")
     target = script.get("target")
-    if not isinstance(target, dict) or not target.get("title_re"):
+    title_re = target.get("title_re") if isinstance(target, dict) else None
+    if not isinstance(title_re, str) or not title_re:
         errors.append("缺少 target.title_re")
+    else:
+        try:
+            re.compile(title_re)
+        except re.error as err:
+            errors.append("target.title_re 不是合法正则: %s" % err)
     steps = script.get("steps")
     if not isinstance(steps, list) or not steps:
         errors.append("steps 必须是非空数组")
@@ -34,7 +51,7 @@ def validate(script):
             if loc.get("strategy") not in ALLOWED_STRATEGIES:
                 errors.append(p + " locator.strategy 只支持 " + str(ALLOWED_STRATEGIES))
             for f in ("x", "y"):
-                if not isinstance(loc.get(f), int):
+                if not _is_number(loc.get(f)):
                     errors.append("%s locator.%s 必须是整数" % (p, f))
         elif action == "input":
             if not isinstance(step.get("text"), str):
@@ -45,6 +62,8 @@ def validate(script):
                     or not all(isinstance(k, str) for k in keys)):
                 errors.append(p + " hotkey 需要 keys 非空字符串数组")
         elif action == "wait":
-            if not isinstance(step.get("seconds"), (int, float)) or step["seconds"] <= 0:
+            sec = step.get("seconds")
+            if (not _is_number(sec, accept_float=True) or not math.isfinite(sec)
+                    or sec <= 0):
                 errors.append(p + " wait 需要 seconds 正数")
     return errors

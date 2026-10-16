@@ -57,3 +57,37 @@ def test_hotkey_needs_keys():
 def test_wait_needs_positive_seconds():
     bad = dict(VALID, steps=[{"action": "wait", "seconds": 0}])
     assert any("seconds" in e for e in validate(bad))
+
+
+def test_click_rejects_bool_xy():
+    bad = dict(VALID, steps=[{"action": "click",
+                              "locator": {"strategy": "offset", "x": True, "y": True}}])
+    errs = validate(bad)
+    assert any("locator.x" in e for e in errs)
+    assert any("locator.y" in e for e in errs)
+
+
+def test_wait_rejects_bool_seconds():
+    bad = dict(VALID, steps=[{"action": "wait", "seconds": True}])
+    assert any("seconds" in e for e in validate(bad))
+
+
+def test_wait_rejects_nan_seconds():
+    bad = dict(VALID, steps=[{"action": "wait", "seconds": float("nan")}])
+    assert any("seconds" in e for e in validate(bad))
+
+
+def test_title_re_must_be_str():
+    bad = dict(VALID, target={"title_re": 123})
+    assert any("title_re" in e for e in validate(bad))
+
+
+def test_title_re_must_compile():
+    bad = dict(VALID, target={"title_re": "["})
+    assert any("title_re" in e for e in validate(bad))
+
+
+def test_valid_script_still_passes():
+    assert validate(VALID) == []
+    int_wait = dict(VALID, steps=[{"action": "wait", "seconds": 1, "desc": "等"}])
+    assert validate(int_wait) == []
