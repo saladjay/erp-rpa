@@ -14,5 +14,5 @@ def load_config(base_dir):
             raise RuntimeError(
                 "已生成 %s,请填入 api_key 后重试" % path)
         raise RuntimeError("缺少配置文件: %s" % path)
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, "r", encoding="utf-8-sig") as f:
         return json.load(f)
