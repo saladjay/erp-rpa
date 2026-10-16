@@ -5,3 +5,8 @@ demo/config.json
 demo/sessions/
 probe/probe_report_*/
 wheels/
+.pytest_cache/
+build/
+dist/
+*.spec
+.claude/settings.local.json
