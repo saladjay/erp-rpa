@@ -1,4 +1,5 @@
-from common.events import Event, write_event, read_events, merge_key_runs
+from common.events import (Event, write_event, read_events, merge_key_runs,
+                           events_path)
 
 
 def test_jsonl_roundtrip(tmp_path):
@@ -9,6 +10,15 @@ def test_jsonl_roundtrip(tmp_path):
     assert len(evs) == 2
     assert evs[0].type == "click" and evs[0].x == 1
     assert evs[1].key == "a"
+
+
+def test_read_events_tolerates_torn_last_line(tmp_path):
+    write_event(str(tmp_path), Event(index=0, t=0.1, type="key", key="a"))
+    write_event(str(tmp_path), Event(index=1, t=0.2, type="key", key="b"))
+    with open(events_path(str(tmp_path)), "a", encoding="utf-8") as f:
+        f.write('{"index": 2, "t":')  # 掉电/崩溃导致的断尾行,无换行截断
+    evs = read_events(str(tmp_path))
+    assert [e.key for e in evs] == ["a", "b"]
 
 
 def _key(i, t, ch):

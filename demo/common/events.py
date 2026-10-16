@@ -3,7 +3,7 @@
 import json
 import os
 from dataclasses import asdict, dataclass
-from typing import List, Optional
+from typing import Optional
 
 EVENTS_FILE = "events.jsonl"
 
@@ -33,11 +33,14 @@ def write_event(session_dir, event):
 
 def read_events(session_dir):
     out = []
-    with open(events_path(session_dir), "r", encoding="utf-8") as f:
+    with open(events_path(session_dir), "r", encoding="utf-8-sig") as f:
         for line in f:
             line = line.strip()
             if line:
-                out.append(Event(**json.loads(line)))
+                try:
+                    out.append(Event(**json.loads(line)))
+                except json.JSONDecodeError:
+                    continue  # 断尾/损坏行跳过,尽量救回其余事件
     return out
 
 
