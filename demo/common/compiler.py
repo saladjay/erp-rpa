@@ -9,6 +9,8 @@ from common.vlmclient import extract_json, image_data_url
 
 MAX_IMAGES = 20
 
+BUTTON_NAMES = {"left": "左", "right": "右", "middle": "中"}
+
 SYSTEM_PROMPT = """你是 Windows 桌面自动化脚本编译器。输入是一次人工演示的事件时间线(每步附截图)和操作意图,请把它编译成确定性的回放脚本。
 只输出严格 JSON,不要任何解释文字,结构:
 {
@@ -26,7 +28,10 @@ SYSTEM_PROMPT = """你是 Windows 桌面自动化脚本编译器。输入是一�
 2. 合并:连续输入文本是一条 input;一次点击是一条 click;组合键(如保存)是 hotkey。
 3. 打开/切换窗口、保存等操作后,插入 wait(0.5~1 秒)。
 4. 省略演示中的犹豫、误点(点了又马上点别处的孤立点击);只保留达成意图所必需的步骤。
-5. target.title_re 用宽松正则匹配窗口标题(标题可能带文件名,如 "xxx - 记事本")。"""
+5. target.title_re 用宽松正则匹配窗口标题(标题可能带文件名,如 "xxx - 记事本")。
+6. 时间线中单独出现的 shift/ctrl/alt 是修饰键按下,不是独立操作——忽略它们,不要为单独修饰键生成任何步骤;hotkey 的 keys 用小写键名(如 ["ctrl","s"])。
+7. locator 的 x/y 就是时间线给出的 win_rel=(x,y) 中的两个数,原样填入。
+8. input 的 text 必须逐字来自时间线的"输入文本",禁止改写、增删空格或标点。"""
 
 
 def event_lines(events):
@@ -40,8 +45,9 @@ def event_lines(events):
             else:
                 rel = "win_rel=?"
             lines.append('[%d] t=%.1fs %s键点击 abs=(%s,%s) %s 窗口="%s"'
-                         % (ev.index, ev.t, ev.button or "左", ev.x, ev.y, rel,
-                            (w.get("title") or "")[:30]))
+                         % (ev.index, ev.t,
+                            BUTTON_NAMES.get(ev.button, ev.button or "左"),
+                            ev.x, ev.y, rel, (w.get("title") or "")[:30]))
         elif ev.type == "key":
             if ev.text is not None:
                 lines.append("[%d] t=%.1fs 输入文本 %r" % (ev.index, ev.t, ev.text))
@@ -64,9 +70,13 @@ def compile_session(session_dir, client, out_path=None):
     content = [{"type": "text", "text": text_part}]
     for s in shots:
         p = os.path.join(session_dir, s)
-        if os.path.exists(p):
-            content.append({"type": "image_url",
-                            "image_url": {"url": image_data_url(p)}})
+        if not os.path.exists(p):
+            continue
+        try:
+            url = image_data_url(p)
+        except Exception:
+            continue  # 损坏/截断的截图跳过,与 events.jsonl 断尾容错策略对称
+        content.append({"type": "image_url", "image_url": {"url": url}})
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": content}]

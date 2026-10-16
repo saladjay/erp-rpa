@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from common.compiler import compile_session
 from common.config import load_config
-from common.vlmclient import VLMClient
+from common.vlmclient import VLMClient, VLMError
 
 
 def main():
@@ -18,7 +18,11 @@ def main():
     base = os.path.dirname(os.path.abspath(__file__))
     cfg = load_config(base)
     client = VLMClient(cfg["vlm"])
-    out = compile_session(a.session_dir, client)
+    try:
+        out = compile_session(a.session_dir, client)
+    except (ValueError, VLMError) as exc:
+        print(str(exc))
+        sys.exit(1)
     print("脚本已生成: %s(请人工审阅后再回放)" % out)
 
 
