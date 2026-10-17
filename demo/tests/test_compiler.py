@@ -174,8 +174,10 @@ def test_system_prompt_states_schema():
     assert "title_re" in SYSTEM_PROMPT and "win_rel" in SYSTEM_PROMPT
     assert "修饰键" in SYSTEM_PROMPT       # 规则6:单独 shift/ctrl/alt 不生成步骤
     assert "原样填入" in SYSTEM_PROMPT     # 规则7:win_rel 直接进 locator
-    assert "逐字" in SYSTEM_PROMPT         # 规则8:input 文本逐字照抄
+    assert "拼音" in SYSTEM_PROMPT         # 规则8:识别 IME 拼音原始键
+    assert "上屏" in SYSTEM_PROMPT         # 规则8:IME 以最终上屏文字为准
+    assert "合并为一条" in SYSTEM_PROMPT   # 规则8:同段连续输入合并为一条 input
+    assert "逐字" in SYSTEM_PROMPT         # 规则8:纯英文/数字键入才逐字照抄
     assert "目标窗口" in SYSTEM_PROMPT     # 规则9:丢弃其他窗口的启动步骤
     assert "禁止发明" in SYSTEM_PROMPT     # 规则10:不发明未演示的步骤
-    assert "上屏" in SYSTEM_PROMPT         # 规则11:IME 拼音以最终上屏为准
     assert "锚定" in SYSTEM_PROMPT         # 规则5:不要用 ^ 和 $ 锚定标题
