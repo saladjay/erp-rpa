@@ -28,10 +28,13 @@ SYSTEM_PROMPT = """你是 Windows 桌面自动化脚本编译器。输入是一�
 2. 合并:连续输入文本是一条 input;一次点击是一条 click;组合键(如保存)是 hotkey。
 3. 打开/切换窗口、保存等操作后,插入 wait(0.5~1 秒)。
 4. 省略演示中的犹豫、误点(点了又马上点别处的孤立点击);只保留达成意图所必需的步骤。
-5. target.title_re 用宽松正则匹配窗口标题(标题可能带文件名,如 "xxx - 记事本")。
+5. target.title_re 用宽松正则匹配窗口标题(标题可能带文件名,如 "xxx - 记事本"),不要用 ^ 和 $ 锚定标题。
 6. 时间线中单独出现的 shift/ctrl/alt 是修饰键按下,不是独立操作——忽略它们,不要为单独修饰键生成任何步骤;hotkey 的 keys 用小写键名(如 ["ctrl","s"])。
 7. locator 的 x/y 就是时间线给出的 win_rel=(x,y) 中的两个数,原样填入。
-8. input 的 text 必须逐字来自时间线的"输入文本",禁止改写、增删空格或标点。"""
+8. input 的 text 必须逐字来自时间线的"输入文本",禁止改写、增删空格或标点。
+9. 只保留发生在"目标窗口"(意图最终操作的那个程序窗口)内的事件;其他窗口的点击与输入(启动器/终端/搜索框)一律丢弃。脚本假定目标程序已经打开。
+10. 禁止发明时间线中不存在的步骤(如未演示过的保存快捷键);不确定的步骤宁可不生成。
+11. 若时间线显示的是输入法拼音原始键(如 ni/退格/ihao),input 文本以截图和操作意图中的最终上屏文字为准;单独的 shift/退格不生成步骤。"""
 
 
 def event_lines(events):
@@ -65,6 +68,12 @@ def compile_session(session_dir, client, out_path=None):
         raise ValueError("intent.txt 为空,请说明操作意图")
 
     shots = [ev.screenshot for ev in events if ev.screenshot][:MAX_IMAGES]
+    # 前 MAX_IMAGES 张可能漏掉最终上屏状态:末条有截图事件若被截掉则补回(去重,至多 +1)
+    for ev in reversed(events):
+        if ev.screenshot:
+            if ev.screenshot not in shots:
+                shots.append(ev.screenshot)
+            break
     text_part = ("操作意图:%s\n\n事件时间线:\n%s\n\n请输出脚本 JSON。"
                  % (intent, "\n".join(event_lines(events))))
     content = [{"type": "text", "text": text_part}]
@@ -80,11 +89,24 @@ def compile_session(session_dir, client, out_path=None):
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": content}]
+    raw_path = os.path.join(session_dir, "vlm_response.txt")
     raw = client.chat(messages)
-    with open(os.path.join(session_dir, "vlm_response.txt"), "w", encoding="utf-8") as f:
+    with open(raw_path, "w", encoding="utf-8") as f:
         f.write(raw)
 
-    script = extract_json(raw)
+    try:
+        script = extract_json(raw)
+    except ValueError as exc:
+        # 解析失败自修复:带上原始输出与错误重问一次,再失败才抛
+        messages.append({"role": "user", "content":
+                         "你上一次的输出不是合法 JSON,错误: %s。"
+                         "请修正语法后重新输出完整脚本 JSON,不要任何解释。\n"
+                         "上一次的输出:\n%s" % (exc, raw)})
+        raw = client.chat(messages)
+        with open(raw_path, "w", encoding="utf-8") as f:
+            f.write(raw)
+        script = extract_json(raw)
+
     errors = validate(script)
     if errors:
         raise ValueError("VLM 产出的脚本不合法:\n" + "\n".join(errors))
