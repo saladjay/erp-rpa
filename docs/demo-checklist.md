@@ -18,3 +18,5 @@
   3. 终端/启动器步骤的剔除依赖 VLM 判断"目标窗口";后续可在 event_lines 加显式窗口标记进一步降低不确定性
   4. F10 是 Windows 菜单栏快捷键,录制中按 F10 会同时触发目标程序菜单栏(演示未造成问题,后续可换键)
   5. 剪贴板内容会被覆盖且不恢复(演示可接受)
+  6. **Win7 二进制轮子风险(终审提出,冒烟清单第一验证项)**:Pillow 10.4.0 / pywin32 311 的 cp38-win32 轮子从未在真 Win7 SP1 上导入过;社区普遍报告 Pillow≥9 在干净 Win7 上 `_imaging` DLL 加载失败。首个导入测试 `py -3.8-32 -c "from PIL import Image"`;若失败 → 预装 VC++ 运行库 + UCRT(KB2999226),仍失败则降级 pin `Pillow==8.4.0`(有 cp38 win32 轮子)。player 不依赖 PIL,回放本身不受影响;recorder/compiler 受影响
+  7. player 失败弹窗的步骤号是 0 起始(与日志一致),人读稍有别扭;两个 CLI 对文件缺失路径仍是 traceback(已知,下一迭代统一)

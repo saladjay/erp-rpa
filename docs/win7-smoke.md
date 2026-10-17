@@ -1,9 +1,15 @@
 # Win7 32 位冒烟清单(每阶段交付前执行)
 
+**状态:待执行**(首次执行后改为"已执行 + 日期 + 结果")
+
 环境:32 位 Win7(SP1),已装 Python 3.8.10 x86(python.org "Windows x86 executable installer",
 安装勾选 Add to PATH 或记住安装路径)。
-材料:整个仓库目录(含 wheels/,git clone 或拷贝)拷到目标机。
+材料:**拷贝整个开发工作目录**到目标机(必须含 wheels/ 离线轮子——注意 wheels/ 不在 git 里,
+git clone 拿不到,需另行同步)。
 
+0. 二进制轮子首检(最高风险项):`py -3.8-32 -c "from PIL import Image"` → 若报 `_imaging` DLL
+   加载失败:装 VC++ 运行库 + UCRT(KB2999226)后重试;仍失败则降级 `Pillow==8.4.0`
+   (改 requirements + 重新 pip download,并把结论记入 demo-checklist 已知问题 6)
 1. `install.bat` → 依赖离线安装成功(--no-index,全程不需要外网)
 2. `py -3.8-32 -m pytest demo\tests -v` → 66 项全绿(不需要网络/大模型)
 3. 记事本端到端(需外网+API Key):
