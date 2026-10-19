@@ -5,7 +5,7 @@
 环境:32 位 Win7(SP1),已装 Python 3.8.10 x86(python.org "Windows x86 executable installer",
 安装勾选 Add to PATH 或记住安装路径)。
 材料:**拷贝整个开发工作目录**到目标机(必须含 wheels/ 离线轮子——注意 wheels/ 不在 git 里,
-git clone 拿不到,需另行同步)。
+git clone 拿不到;在开发机跑仓库根的 `download-wheels.bat` 可一键重建,或另行同步该目录)。
 
 0. 二进制轮子首检(最高风险项):`py -3.8-32 -c "from PIL import Image"` → 若报 `_imaging` DLL
    加载失败:装 VC++ 运行库 + UCRT(KB2999226)后重试;仍失败则降级 `Pillow==8.4.0`
